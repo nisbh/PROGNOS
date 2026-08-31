@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import datetime
 import random
+import json
+import os
 
 app = FastAPI(title="PROGNOS Attack Forecasting API")
 
@@ -18,6 +20,13 @@ app.add_middleware(
 # In a real implementation, these would query the ML model state or database
 MOCK_CLASSES = ["NORMAL", "ELEVATED", "NEAR-TERM", "IMMINENT"]
 current_class_idx = 1 # Start at ELEVATED for testing
+
+# Load MITRE knowledge base
+MITRE_DB = {}
+mitre_path = os.path.join(os.path.dirname(__file__), "mitre_mapping.json")
+if os.path.exists(mitre_path):
+    with open(mitre_path, "r") as f:
+        MITRE_DB = json.load(f).get("attacks", {})
 
 @app.get("/current-status")
 def get_current_status():
@@ -40,12 +49,19 @@ def get_forecast():
     risk_class = MOCK_CLASSES[current_class_idx]
     prob_map = {"NORMAL": 0.1, "ELEVATED": 0.45, "NEAR-TERM": 0.75, "IMMINENT": 0.95}
     
-    return {
+    response = {
         "class": risk_class,
         "probability": prob_map[risk_class] + random.uniform(-0.05, 0.05),
         "eta_window": "2m-5m" if risk_class == "ELEVATED" else "30s-2m" if risk_class == "NEAR-TERM" else "0s-30s" if risk_class == "IMMINENT" else "N/A",
         "top_features": ["SYN_rate_slope", "unique_source_ips_pct_change", "connection_count"]
     }
+    
+    # Inject MITRE ATT&CK context if an attack is forecasted
+    if risk_class != "NORMAL" and "DoS GoldenEye" in MITRE_DB:
+        # We mock returning GoldenEye as the forecasted attack for the demo
+        response["mitre_context"] = MITRE_DB["DoS GoldenEye"]
+        
+    return response
 
 @app.get("/traffic")
 def get_traffic():

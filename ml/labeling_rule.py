@@ -50,15 +50,20 @@ class AttackLabeler:
         else:
             return "NORMAL"
 
-# --- Example Usage for Thursday-15-02-2018 ---
+# --- Example Usage for Wednesday-05-07-2017 (CIC-IDS2017) ---
 if __name__ == "__main__":
-    # TODO (Nisarg): Extract the exact start/end timestamps for GoldenEye & Slowloris 
-    # from the Thursday-15-02-2018 CSV and place them here.
-    goldeneye_start = datetime.datetime(2018, 2, 15, 9, 26, 0) # Placeholder
-    goldeneye_end = datetime.datetime(2018, 2, 15, 10, 9, 0)   # Placeholder
+    # Exact start/end timestamps for GoldenEye & Slowloris 
+    # extracted from Wednesday-workingHours.pcap_ISCX.csv
+    
+    goldeneye_start = datetime.datetime(2017, 7, 5, 11, 10, 0)
+    goldeneye_end = datetime.datetime(2017, 7, 5, 11, 19, 0)
+    
+    slowloris_start = datetime.datetime(2017, 7, 5, 2, 24, 0)
+    slowloris_end = datetime.datetime(2017, 7, 5, 10, 11, 0)
     
     labeler = AttackLabeler(attack_windows=[
-        (goldeneye_start, goldeneye_end)
+        (goldeneye_start, goldeneye_end),
+        (slowloris_start, slowloris_end)
     ])
 
     # Test the labeler

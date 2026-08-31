@@ -1,0 +1,34 @@
+{
+  "attacks": {
+    "DoS GoldenEye": {
+      "tactic": {
+        "id": "TA0040",
+        "name": "Impact"
+      },
+      "technique": {
+        "id": "T1499",
+        "name": "Endpoint Denial of Service"
+      },
+      "sub_technique": {
+        "id": "T1499.004",
+        "name": "Application or System Exploitation"
+      },
+      "description": "Attempts to exhaust the web server's resources by keeping HTTP connections open as long as possible, preventing legitimate users from accessing the service."
+    },
+    "DoS slowloris": {
+      "tactic": {
+        "id": "TA0040",
+        "name": "Impact"
+      },
+      "technique": {
+        "id": "T1499",
+        "name": "Endpoint Denial of Service"
+      },
+      "sub_technique": {
+        "id": "T1499.004",
+        "name": "Application or System Exploitation"
+      },
+      "description": "Attempts to exhaust the web server's resources by keeping HTTP connections open as long as possible, preventing legitimate users from accessing the service."
+    }
+  }
+}
