@@ -1,17 +1,21 @@
 import time
 import datetime
 from scapy.all import PcapReader
-from ml.feature_extractor import process_packet  # To be implemented by Nilesh
+from ml.feature_extractor import FeatureExtractor
 
-def replay_pcap(pcap_path: str, speed_multiplier: float = 1.0):
+def replay_pcap(pcap_path: str, speed_multiplier: float = 1.0, output_csv: str = "data/training_features.csv", live_mode: bool = True):
     """
-    Replays a PCAP file, maintaining the original timing between packets,
+    Replays a PCAP file, optionally maintaining the original timing between packets,
     and feeds them into the feature extractor.
     
     :param pcap_path: Path to the PCAP file.
     :param speed_multiplier: >1.0 for faster replay, <1.0 for slower.
+    :param live_mode: If False, skips all sleeping (blasts through PCAP as fast as possible for training).
     """
-    print(f"Starting replay of {pcap_path} at {speed_multiplier}x speed...")
+    print(f"Starting replay of {pcap_path}")
+    print(f"Live mode: {live_mode}, Speed: {speed_multiplier}x")
+    
+    extractor = FeatureExtractor(output_csv=output_csv)
     
     first_packet = True
     last_pcap_time = None
@@ -32,7 +36,7 @@ def replay_pcap(pcap_path: str, speed_multiplier: float = 1.0):
                     # Calculate how much time passed in the PCAP vs real life
                     pcap_delta = current_pcap_time - last_pcap_time
                     
-                    if pcap_delta > 0:
+                    if pcap_delta > 0 and live_mode:
                         # Wait until it's time to send this packet
                         target_real_time = last_real_time + (pcap_delta / speed_multiplier)
                         sleep_duration = target_real_time - current_real_time
@@ -43,10 +47,9 @@ def replay_pcap(pcap_path: str, speed_multiplier: float = 1.0):
                     last_pcap_time = current_pcap_time
                     last_real_time = time.time()
                 
-                # Pass the packet to Nilesh's feature extractor
+                # Pass the packet to the feature extractor
                 try:
-                    # process_packet is responsible for accumulating stats into the 10-second windows
-                    process_packet(packet)
+                    extractor.process_packet(packet)
                 except Exception as e:
                     print(f"Error processing packet: {e}")
                     
@@ -56,6 +59,6 @@ def replay_pcap(pcap_path: str, speed_multiplier: float = 1.0):
     print("Replay finished.")
 
 if __name__ == "__main__":
-    # Example usage (Nisarg to update path when ready for Block F)
-    # replay_pcap("path/to/Thursday-15-02-2018_TrafficForML_CICFlowMeter.pcap", speed_multiplier=1.0)
+    # Example usage for generating training data fast:
+    # replay_pcap("N:/Github Projects/PROGNOS/data/Wednesday-workingHours.pcap", live_mode=False)
     print("Replay pacing harness ready.")
