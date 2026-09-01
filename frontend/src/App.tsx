@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { TopHeader } from './components/TopHeader';
 import { DashboardPage } from './components/DashboardPage';
 import { ThreatContextPage } from './components/ThreatContextPage';
+import { RiskHistoryPage } from './components/RiskHistoryPage';
 import { BackendStatusBanner } from './components/BackendStatusBanner';
 import type { DashboardData, ActiveTab } from './types/dashboard';
 import { fetchAllDashboardData, API_BASE_URL } from './services/api';
@@ -58,6 +59,14 @@ export function App() {
     };
   }, [loadData]);
 
+  // Determine if system is in IMMINENT threat state
+  const currentRiskLevel =
+    dashboardData.currentStatus?.risk_level ||
+    dashboardData.currentStatus?.class ||
+    dashboardData.forecast?.class ||
+    'NORMAL';
+  const isImminent = currentRiskLevel.toUpperCase() === 'IMMINENT';
+
   return (
     <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-row font-sans">
       {/* 1. Fixed Left Sidebar */}
@@ -67,9 +76,16 @@ export function App() {
         backendOnline={backendOnline}
       />
 
-      {/* 2. Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        {/* Minimal Top Header */}
+      {/* 2. Main Content Area with Subtle Dynamic Background Glow on IMMINENT state */}
+      <div
+        className="flex-1 flex flex-col min-w-0 min-h-screen transition-colors duration-500 relative"
+        style={{
+          background: isImminent
+            ? 'radial-gradient(ellipse 100% 55% at 50% 0%, rgba(127, 29, 29, 0.18), transparent 75%), #0b0f19'
+            : '#0b0f19',
+        }}
+      >
+        {/* Minimal Top Header with Live LOCAL and UTC Clocks */}
         <TopHeader
           activeTab={activeTab}
           backendOnline={backendOnline}
@@ -89,6 +105,10 @@ export function App() {
 
           {activeTab === 'threat-context' && (
             <ThreatContextPage data={dashboardData} />
+          )}
+
+          {activeTab === 'risk-history' && (
+            <RiskHistoryPage data={dashboardData} />
           )}
         </main>
 

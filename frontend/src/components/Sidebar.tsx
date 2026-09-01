@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { LayoutDashboard, ShieldAlert, Shield, Radio, Activity, UploadCloud, Loader2 } from 'lucide-react';
+import { LayoutDashboard, ShieldAlert, Shield, Radio, Activity, Plus, Loader2, History } from 'lucide-react';
 import type { ActiveTab } from '../types/dashboard';
 import { uploadReplay } from '../services/api';
 
@@ -41,58 +41,54 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside className="w-64 bg-[#0d1322] border-r border-slate-800/80 flex flex-col shrink-0 min-h-screen select-none">
+    <aside className="w-72 bg-[#0d1322] border-r border-slate-800/80 flex flex-col shrink-0 min-h-screen select-none">
       {/* 1. Brand / Header */}
-      <div className="p-5 border-b border-slate-800/80 flex items-center gap-3">
-        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-400 shadow-sm shrink-0">
-          <Shield className="w-5 h-5" />
+      <div className="p-5 border-b border-slate-800/80 flex items-center gap-3.5">
+        <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-sky-500/15 border border-sky-500/40 text-sky-400 shadow-[0_0_18px_rgba(56,189,248,0.2)] shrink-0">
+          <Shield className="w-7 h-7" />
         </div>
-        <div className="flex flex-col min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-base font-bold text-white tracking-tight">
-              PROGNOS
-            </span>
-            <span className="px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded bg-slate-800 text-sky-400 border border-slate-700">
-              SIH 2026
-            </span>
-          </div>
-          <span className="text-[11px] text-slate-400 truncate">
+        <div className="flex flex-col min-w-0 justify-center">
+          <span className="text-2xl font-black text-white tracking-wider leading-none">
+            PROGNOS
+          </span>
+          <span className="text-xs text-slate-400 font-medium tracking-tight mt-1 truncate">
             Network Attack Forecasting
           </span>
         </div>
       </div>
 
+
       {/* 2. Upload Custom Replay */}
-      <div className="px-3 pt-5 pb-2 flex flex-col gap-2 border-b border-slate-800/80">
-        <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-          Simulation Data
+      <div className="px-4 pt-4 pb-3.5 flex flex-col items-center gap-2.5 border-b border-slate-800/80">
+        <div className="w-full px-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          Upload Custom CSV File
         </div>
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          onChange={handleFileChange} 
-          accept=".csv" 
-          className="hidden" 
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept=".csv"
+          className="hidden"
         />
         <button
           onClick={handleUploadClick}
           disabled={isUploading || !backendOnline}
-          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 border ${
-            isUploading || !backendOnline
-              ? 'bg-slate-900 border-slate-800 text-slate-500 cursor-not-allowed'
-              : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/20 hover:border-indigo-500/50 shadow-[0_0_12px_rgba(99,102,241,0.1)] cursor-pointer'
-          }`}
+          className={`inline-flex items-center justify-center gap-3 px-6 py-3.5 rounded-2xl text-sm font-semibold transition-all duration-200 border ${isUploading || !backendOnline
+            ? 'bg-slate-900 border-slate-800 text-slate-500 cursor-not-allowed'
+            : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/20 hover:border-indigo-500/50 shadow-[0_2px_8px_rgba(99,102,241,0.15)] hover:shadow-[0_4px_14px_rgba(99,102,241,0.25)] cursor-pointer'
+            }`}
         >
-          <div className="flex items-center gap-2.5">
-            {isUploading ? (
-              <Loader2 className="w-4 h-4 shrink-0 animate-spin text-indigo-400" />
-            ) : (
-              <UploadCloud className="w-4 h-4 shrink-0" />
-            )}
-            <span>{isUploading ? 'Uploading...' : 'Upload Custom CSV'}</span>
-          </div>
+          {isUploading ? (
+            <Loader2 className="w-5 h-5 shrink-0 animate-spin text-indigo-400" />
+          ) : (
+            <Plus className="w-5 h-5 shrink-0" strokeWidth={2.2} />
+          )}
+          <span className="tracking-wide">{isUploading ? 'Uploading...' : 'UPLOAD'}</span>
         </button>
       </div>
+
+
+
 
       {/* 3. Navigation Items */}
       <div className="flex-1 py-4 px-3 flex flex-col gap-1.5">
@@ -103,11 +99,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Dashboard Nav Link */}
         <button
           onClick={() => onTabChange('dashboard')}
-          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer ${
-            activeTab === 'dashboard'
-              ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30 shadow-[0_0_12px_rgba(56,189,248,0.1)]'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'
-          }`}
+          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer ${activeTab === 'dashboard'
+            ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30 shadow-[0_0_12px_rgba(56,189,248,0.1)]'
+            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'
+            }`}
         >
           <LayoutDashboard className="w-4 h-4 shrink-0" />
           <span>Dashboard</span>
@@ -116,15 +111,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Threat Context Nav Link */}
         <button
           onClick={() => onTabChange('threat-context')}
-          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer ${
-            activeTab === 'threat-context'
-              ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30 shadow-[0_0_12px_rgba(56,189,248,0.1)]'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'
-          }`}
+          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer ${activeTab === 'threat-context'
+            ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30 shadow-[0_0_12px_rgba(56,189,248,0.1)]'
+            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'
+            }`}
         >
           <ShieldAlert className="w-4 h-4 shrink-0" />
           <span>Threat Context</span>
         </button>
+
+        {/* Risk History Nav Link */}
+        <button
+          onClick={() => onTabChange('risk-history')}
+          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer ${activeTab === 'risk-history'
+            ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30 shadow-[0_0_12px_rgba(56,189,248,0.1)]'
+            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'
+            }`}
+        >
+          <History className="w-4 h-4 shrink-0" />
+          <span>Risk History</span>
+        </button>
+
 
         {/* System Monitoring Section */}
         <div className="mt-8 px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
@@ -138,16 +145,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span>FastAPI Backend</span>
             </span>
             <span
-              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                backendOnline
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
-              }`}
+              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${backendOnline
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
+                }`}
             >
               <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  backendOnline ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'
-                }`}
+                className={`w-1.5 h-1.5 rounded-full ${backendOnline ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'
+                  }`}
               />
               {backendOnline ? 'Online' : 'Offline'}
             </span>
