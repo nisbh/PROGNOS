@@ -66,26 +66,12 @@ FEATURE_NAMES = [
     "syn_rate_1m_avg", "packet_size_1m_avg"
 ]
 
-def generate_traffic_state(tick: int) -> pd.DataFrame:
-    """Generates a Pandas DataFrame of the 12 features based on the current attack stage."""
-    # Cycle resets every 10 ticks (100 seconds)
-    stage = tick % 10
-    
-    if stage < 3:
-        # NORMAL
-        data = [10 + random.uniform(-2, 2), 0.1, 200, 5, 100, 50, 500, 1, 0, 10, 0.1, 190]
-    elif stage < 5:
-        # ELEVATED (Traffic starts rising)
-        data = [150 + random.uniform(-20, 20), 5.0, 1000, 50, 80, 40, 400, 20, 1.5, 50, 2.0, 500]
-    elif stage < 7:
-        # NEAR-TERM (Heavy SYN scanning)
-        data = [450 + random.uniform(-50, 50), 25.0, 5000, 250, 50, 10, 200, 50, 5.0, 200, 10.0, 4500]
-    else:
-        # IMMINENT (Full scale DDoS)
-        data = [1200 + random.uniform(-100, 100), 75.0, 80000, 600, 10, 1, 50, 500, 15.0, 800, 40.0, 75000]
-        
-    df = pd.DataFrame([data], columns=FEATURE_NAMES)
-    return df
+def get_traffic_state_from_csv(tick: int, df_replay: pd.DataFrame) -> pd.DataFrame:
+    """Reads the current tick's row from the CSV file."""
+    # Loop back to start if we reach the end of the CSV
+    row_idx = tick % len(df_replay)
+    row_data = df_replay.iloc[[row_idx]]
+    return row_data
 
 def run_ml_inference(df: pd.DataFrame):
     """Runs the model and SHAP explainer on the given dataframe."""
@@ -129,11 +115,20 @@ def run_ml_inference(df: pd.DataFrame):
     return predicted_class, confidence, probs.tolist(), top_features
 
 async def background_simulation_loop():
-    """Background task that ticks the simulation forward every 10 seconds."""
+    """Background task that ticks the simulation forward every 10 seconds by reading from a CSV."""
     global SIMULATION_TICK, HISTORY_LOG, TRAFFIC_HISTORY
+    
+    csv_path = os.path.join(os.path.dirname(__file__), "..", "data", "demo_replay.csv")
+    if os.path.exists(csv_path):
+        df_replay = pd.read_csv(csv_path)
+    else:
+        # Fallback to a single dummy row if CSV missing
+        print(f"Warning: Replay CSV not found at {csv_path}")
+        df_replay = pd.DataFrame([[0]*12], columns=FEATURE_NAMES)
+
     while True:
-        # 1. Generate new traffic data for this tick
-        current_df = generate_traffic_state(SIMULATION_TICK)
+        # 1. Read the exact 10s traffic window from the CSV dataset
+        current_df = get_traffic_state_from_csv(SIMULATION_TICK, df_replay)
         
         # 2. Run Inference
         pred_class, conf, probs, top_features = run_ml_inference(current_df)
@@ -163,17 +158,20 @@ async def background_simulation_loop():
         if len(TRAFFIC_HISTORY) > 20:
             TRAFFIC_HISTORY.pop()
             
-        print(f"[Simulation Tick {SIMULATION_TICK}] Predicted: {pred_class} ({conf*100:.1f}%)")
+        print(f"[Simulation Tick {SIMULATION_TICK}] Read CSV Row {SIMULATION_TICK % len(df_replay)} -> Predicted: {pred_class} ({conf*100:.1f}%)")
         SIMULATION_TICK += 1
         
-        # Wait 10 seconds before generating the next traffic window
+        # Wait 10 seconds before reading the next traffic window
         await asyncio.sleep(10)
 
 @app.on_event("startup")
 async def startup_event():
     # Pre-populate history with 5 normal ticks so the dashboard isn't empty on load
+    csv_path = os.path.join(os.path.dirname(__file__), "..", "data", "demo_replay.csv")
+    df_replay = pd.read_csv(csv_path) if os.path.exists(csv_path) else pd.DataFrame([[0]*12], columns=FEATURE_NAMES)
+    
     for i in range(5):
-        df = generate_traffic_state(0)
+        df = get_traffic_state_from_csv(0, df_replay)
         pred_class, conf, probs, top_features = run_ml_inference(df)
         ts = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=(5-i)*10)).isoformat()
         HISTORY_LOG.insert(0, {
@@ -223,13 +221,25 @@ def get_forecast():
         "top_features": [f["name"] for f in latest["top_features"]]
     }
     
-    if risk_class != "NORMAL":
-        # Let's map dynamically. If syn_rate is highest, it's SYN flood. If connections_per_sec, generic DoS.
-        top_feature_name = latest["top_features"][0]["name"] if latest["top_features"] else ""
-        if "syn" in top_feature_name.lower() and "SYN Flood" in MITRE_DB:
-            response["mitre_context"] = MITRE_DB["SYN Flood"]
-        elif "DoS GoldenEye" in MITRE_DB:
-            response["mitre_context"] = MITRE_DB["DoS GoldenEye"]
+    if risk_class != "NORMAL" and latest["top_features"]:
+        # Robust multi-feature heuristic mapping
+        top_feature_names = [f["name"].lower() for f in latest["top_features"]]
+        
+        # 1. SYN Flood Check (High SYN rate + high connections)
+        if "syn_rate" in top_feature_names and "connections_per_sec" in top_feature_names:
+            response["mitre_context"] = MITRE_DB.get("SYN Flood")
+            
+        # 2. Port Scanning Check (High connections but low/no SYN dominance)
+        elif "connections_per_sec" in top_feature_names and "syn_rate" not in top_feature_names:
+            response["mitre_context"] = MITRE_DB.get("Port Scanning")
+            
+        # 3. Application DoS Check (Abnormal packet sizes taking dominance)
+        elif "avg_packet_size" in top_feature_names or "packet_size_1m_avg" in top_feature_names:
+            response["mitre_context"] = MITRE_DB.get("Application DoS")
+            
+        # 4. Default to Brute Force if flow durations are perfectly uniform (or catch-all)
+        else:
+            response["mitre_context"] = MITRE_DB.get("Brute Force")
             
     return response
 
