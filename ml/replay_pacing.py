@@ -1,5 +1,6 @@
 import time
 import datetime
+import sys
 from scapy.all import PcapReader
 from ml.feature_extractor import FeatureExtractor
 
@@ -59,6 +60,10 @@ def replay_pcap(pcap_path: str, speed_multiplier: float = 1.0, output_csv: str =
     print("Replay finished.")
 
 if __name__ == "__main__":
-    # Example usage for generating training data fast:
-    # replay_pcap("N:/Github Projects/PROGNOS/data/Wednesday-workingHours.pcap", live_mode=False)
-    print("Replay pacing harness ready.")
+    if len(sys.argv) < 2:
+        print("Usage: python -m ml.replay_pacing <path_to_pcap>")
+        print("Example: python -m ml.replay_pacing data/Wednesday-workingHours.pcap")
+        sys.exit(1)
+        
+    pcap_file = sys.argv[1]
+    replay_pcap(pcap_file, live_mode=False)

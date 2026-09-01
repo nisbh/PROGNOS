@@ -2,12 +2,13 @@ import pandas as pd
 import numpy as np
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
-from sklearn.calibration import CalibratedClassifierCV
-from sklearn.metrics import classification_report, accuracy_score
+from sklearn.metrics import classification_report, accuracy_score, roc_auc_score, average_precision_score
+from sklearn.preprocessing import label_binarize
+from sklearn.utils.class_weight import compute_sample_weight
 import joblib
 import shap
 
-def train_model(csv_path: str = "data/training_features.csv", model_out: str = "ml/model.pkl"):
+def train_model(csv_path: str = "data/training_features_unsw.csv", model_out: str = "ml/model_unsw.pkl"):
     print(f"Loading training data from {csv_path}...")
     try:
         df = pd.read_csv(csv_path)
@@ -16,7 +17,8 @@ def train_model(csv_path: str = "data/training_features.csv", model_out: str = "
         return
 
     # Drop timestamp (we don't train on the literal time)
-    X = df.drop(columns=["timestamp", "label"])
+    cols_to_drop = [col for col in df.columns if col.lower() == 'timestamp'] + ['label']
+    X = df.drop(columns=cols_to_drop)
     y = df["label"]
 
     # Convert string labels to integers for XGBoost
@@ -26,26 +28,36 @@ def train_model(csv_path: str = "data/training_features.csv", model_out: str = "
     # Train/test split
     X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded)
 
-    print("Training XGBoost base classifier...")
-    # Initialize base XGBoost model
-    # We use multi:softprob for multiclass probabilities
+    print("Training XGBoost multi-class temporal forecasting model...")
     base_model = xgb.XGBClassifier(
         objective="multi:softprob",
         num_class=4,
         eval_metric="mlogloss",
         use_label_encoder=False,
-        random_state=42
+        random_state=42,
+        max_depth=8, # Deeper trees to learn complex temporal patterns
+        n_estimators=200
     )
 
-    # Calibrate probabilities so that the dashboard displays smooth, realistic percentages
-    # rather than just binary step functions.
-    print("Calibrating probabilities...")
-    calibrated_model = CalibratedClassifierCV(base_model, method='sigmoid', cv=3)
-    calibrated_model.fit(X_train, y_train)
+    print("Training XGBoost multi-class temporal forecasting model...")
+    base_model.fit(X_train, y_train)
 
     print("Evaluating model...")
-    y_pred = calibrated_model.predict(X_test)
+    y_pred = base_model.predict(X_test)
+    y_prob = base_model.predict_proba(X_test)
+    
     print(f"Accuracy: {accuracy_score(y_test, y_pred) * 100:.2f}%")
+    
+    # Calculate advanced metrics
+    y_test_bin = label_binarize(y_test, classes=[0, 1, 2, 3])
+    
+    # ROC-AUC (One-vs-Rest)
+    roc_auc = roc_auc_score(y_test_bin, y_prob, average='weighted', multi_class='ovr')
+    print(f"ROC-AUC (Weighted OVR): {roc_auc:.4f}")
+    
+    # PR-AUC (Average Precision)
+    pr_auc = average_precision_score(y_test_bin, y_prob, average='weighted')
+    print(f"PR-AUC (Weighted): {pr_auc:.4f}")
     
     # Reverse map for classification report
     reverse_map = {v: k for k, v in label_map.items()}
@@ -53,8 +65,8 @@ def train_model(csv_path: str = "data/training_features.csv", model_out: str = "
     print("\nClassification Report:")
     print(classification_report(y_test, y_pred, target_names=target_names))
 
-    print(f"Saving calibrated model to {model_out}...")
-    joblib.dump(calibrated_model, model_out)
+    print(f"Saving model to {model_out}...")
+    joblib.dump(base_model, model_out)
     
     # Save the label mapping as well for the inference script
     joblib.dump(reverse_map, "ml/label_map.pkl")
