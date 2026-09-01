@@ -14,9 +14,6 @@ import {
   Timer,
   Activity,
   HelpCircle,
-  History,
-  Clock,
-  ChevronRight,
 } from 'lucide-react';
 import type { DashboardData } from '../types/dashboard';
 import {
@@ -25,8 +22,6 @@ import {
   formatFeatureName,
   generatePlainEnglishExplanation,
   getSortedTrafficHistory,
-  getSortedRiskHistory,
-  formatTimestamp,
 } from '../services/api';
 
 interface DashboardPageProps {
@@ -63,15 +58,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ data }) => {
   const maxShap = Math.max(...features.map((f) => Math.abs(f.shap_value)), 2.0);
   const humanExplanation = generatePlainEnglishExplanation(features, currentClass);
 
-  // Sort history points chronologically: oldest (LEFT) -> newest (RIGHT)
-  const historyItems = getSortedRiskHistory(data.history);
-
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full flex-1 justify-center py-2">
       {/* ========================================================================= */}
       {/* 1. TOP ROW: 4 Compact Metric Cards                                       */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: Current Risk */}
         <div className="soc-card p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
@@ -86,7 +78,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ data }) => {
             </span>
           </div>
 
-          <div className="my-3">
+          <div className="my-3.5">
             <div className="flex items-baseline gap-1.5">
               <span className="text-3xl font-bold text-white tracking-tight">
                 {formattedRisk}
@@ -123,7 +115,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ data }) => {
             </span>
           </div>
 
-          <div className="my-3">
+          <div className="my-3.5">
             <div className="flex items-baseline gap-1.5">
               <span className="text-3xl font-bold text-white tracking-tight">
                 {probability}%
@@ -152,7 +144,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ data }) => {
             </span>
           </div>
 
-          <div className="my-3">
+          <div className="my-3.5">
             <div className="flex items-baseline">
               <span className={`text-2xl sm:text-3xl font-bold tracking-tight ${severity.textClass}`}>
                 {etaWindow}
@@ -181,7 +173,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ data }) => {
             <span className="text-[10px] text-slate-500">Live Window</span>
           </div>
 
-          <div className="my-2 grid grid-cols-2 gap-2">
+          <div className="my-2.5 grid grid-cols-2 gap-2">
             <div>
               <span className="text-xs text-slate-400 block">Conn / sec</span>
               <span className="text-xl font-bold text-white tracking-tight block">
@@ -206,10 +198,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ data }) => {
       {/* ========================================================================= */}
       {/* 2. SECOND ROW: Traffic Trend (65-70%) + Prediction Reasoning (30-35%)    */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Left: Network Traffic Trend (lg:col-span-8 ≈ 67%) */}
         <div className="lg:col-span-8 soc-card p-6 flex flex-col justify-between">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
             <div>
               <h2 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
                 <span>Network Traffic Trend</span>
@@ -233,7 +225,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ data }) => {
           </div>
 
           {/* Area Chart with Restrained Fill */}
-          <div className="w-full h-72">
+          <div className="w-full h-80 lg:h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={trafficPoints}
@@ -320,7 +312,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ data }) => {
             </p>
 
             {/* Plain-English Summary Derived Strictly from Backend Features */}
-            <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 text-xs leading-relaxed mb-4">
+            <div className="p-3.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 text-xs leading-relaxed mb-4">
               <p className="font-normal text-slate-200">
                 {humanExplanation}
               </p>
@@ -339,7 +331,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ data }) => {
                   return (
                     <div
                       key={idx}
-                      className="p-2.5 rounded-md bg-slate-900/90 border border-slate-800/80 flex flex-col gap-1.5"
+                      className="p-3 rounded-md bg-slate-900/90 border border-slate-800/80 flex flex-col gap-1.5"
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-medium text-slate-200 truncate mr-2" title={humanTitle}>
@@ -366,92 +358,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ data }) => {
                   );
                 })
               ) : (
-                <div className="text-xs text-slate-500 py-3 text-center">
+                <div className="text-xs text-slate-500 py-4 text-center">
                   No anomalous model triggers detected.
                 </div>
               )}
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-800 mt-4 text-[11px] text-slate-500 flex items-center justify-between">
+          <div className="pt-3 border-t border-slate-800 mt-5 text-[11px] text-slate-500 flex items-center justify-between">
             <span>Model Explainability</span>
             <span className="text-slate-400">SHAP Attributions</span>
           </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 3. BOTTOM ROW: Chronological Recent Risk History Timeline                 */}
-      {/* ========================================================================= */}
-      <div className="soc-card p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <History className="w-4 h-4 text-sky-400" />
-            <h2 className="text-sm font-semibold text-slate-100">
-              Recent Risk History
-            </h2>
-          </div>
-          <span className="text-xs text-slate-400">
-            Chronological Progression (Oldest → Latest)
-          </span>
-        </div>
-
-        {/* Timeline Progression Container */}
-        <div className="w-full overflow-x-auto pb-1">
-          {historyItems.length > 0 ? (
-            <div className="flex items-center justify-between min-w-[580px] gap-2">
-              {historyItems.map((item, idx) => {
-                const itemSeverity = getSeverityStyle(item.class);
-                const isLatest = idx === historyItems.length - 1;
-
-                return (
-                  <React.Fragment key={idx}>
-                    {/* Progression Node */}
-                    <div
-                      className={`flex-1 p-3 rounded-lg border flex flex-col items-center text-center transition-all ${
-                        isLatest
-                          ? `${itemSeverity.bgClass} ${itemSeverity.borderClass} ring-1 ring-sky-500/20`
-                          : 'bg-slate-900 border-slate-800'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full mb-1 text-[10px]">
-                        <span className="text-slate-500 font-mono">
-                          #{idx + 1}
-                        </span>
-                        {isLatest && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                            Current
-                          </span>
-                        )}
-                      </div>
-
-                      <span
-                        className={`px-2.5 py-0.5 rounded text-xs font-bold border my-1 ${itemSeverity.badgeBg}`}
-                      >
-                        {itemSeverity.label}
-                      </span>
-
-                      <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-1">
-                        <Clock className="w-3 h-3 text-slate-500" />
-                        <span>{formatTimestamp(item.ts)}</span>
-                      </div>
-                    </div>
-
-                    {/* Arrow Connector between steps */}
-                    {idx < historyItems.length - 1 && (
-                      <div className="shrink-0 px-1 text-slate-600">
-                        <ChevronRight className="w-4 h-4" />
-                      </div>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center text-xs text-slate-500 py-4">
-              No recent temporal windows recorded.
-            </div>
-          )}
         </div>
       </div>
     </div>

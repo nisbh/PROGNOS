@@ -51,7 +51,7 @@ export async function fetchExplanation(baseUrl: string = API_BASE_URL): Promise<
   return res.json();
 }
 
-export async function fetchHistory(limit: number = 5, baseUrl: string = API_BASE_URL): Promise<HistoryResponse> {
+export async function fetchHistory(limit: number = 60, baseUrl: string = API_BASE_URL): Promise<HistoryResponse> {
   const res = await fetchWithTimeout(`${baseUrl}/history?limit=${limit}`);
   if (!res.ok) throw new Error(`Failed to fetch history (HTTP ${res.status})`);
   return res.json();
@@ -81,7 +81,7 @@ export async function fetchAllDashboardData(baseUrl: string = API_BASE_URL): Pro
       fetchForecast(baseUrl),
       fetchTraffic(baseUrl),
       fetchExplanation(baseUrl),
-      fetchHistory(5, baseUrl),
+      fetchHistory(60, baseUrl),
     ]);
 
     return {
@@ -93,6 +93,7 @@ export async function fetchAllDashboardData(baseUrl: string = API_BASE_URL): Pro
         history,
       },
       error: null,
+
     };
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Cannot connect to FastAPI backend';
@@ -283,4 +284,16 @@ export function getSortedRiskHistory(history?: HistoryResponse | null): Array<{
   return [...history.history].sort(
     (a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime()
   );
-}
+}
+
+// Sort risk history descending (newest -> oldest, top -> bottom for tables)
+export function getHistoryNewestFirst(history?: HistoryResponse | null): Array<{
+  ts: string;
+  class: ThreatClass;
+}> {
+  if (!history?.history) return [];
+  return [...history.history].sort(
+    (a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime()
+  );
+}
+

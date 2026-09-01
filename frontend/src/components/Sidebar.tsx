@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { LayoutDashboard, ShieldAlert, Shield, Radio, Activity, UploadCloud, Loader2 } from 'lucide-react';
+import { LayoutDashboard, ShieldAlert, Shield, Radio, Activity, UploadCloud, Loader2, History } from 'lucide-react';
 import type { ActiveTab } from '../types/dashboard';
 import { uploadReplay } from '../services/api';
 
@@ -49,7 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-base font-bold text-white tracking-tight">
+            <span className="text-lg font-bold text-white tracking-tight">
               PROGNOS
             </span>
             <span className="px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded bg-slate-800 text-sky-400 border border-slate-700">
@@ -125,6 +125,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <ShieldAlert className="w-4 h-4 shrink-0" />
           <span>Threat Context</span>
         </button>
+
+        {/* Risk History Nav Link */}
+        <button
+          onClick={() => onTabChange('risk-history')}
+          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer ${
+            activeTab === 'risk-history'
+              ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30 shadow-[0_0_12px_rgba(56,189,248,0.1)]'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'
+          }`}
+        >
+          <History className="w-4 h-4 shrink-0" />
+          <span>Risk History</span>
+        </button>
+
 
         {/* System Monitoring Section */}
         <div className="mt-8 px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
