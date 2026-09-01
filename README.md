@@ -11,7 +11,7 @@ By capturing the "ELEVATED" state of network anomalies, PROGNOS provides securit
 
 ---
 
-## ✨ Key Features
+## Key Features
 
 1. **Live Threat Radar & Forecasting:** Dynamically transitions between `NORMAL`, `ELEVATED`, `NEAR-TERM`, and `IMMINENT` states based on real-time ML risk scoring.
 2. **SHAP Explainable AI:** Eliminates the "black box" problem. The dashboard provides mathematical proof of *why* an alert is happening by isolating the exact network features driving the risk score (e.g., `syn_rate_1m_avg`).
@@ -20,7 +20,7 @@ By capturing the "ELEVATED" state of network anomalies, PROGNOS provides securit
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Frontend:** React 18, TypeScript, TailwindCSS, Vite (Glassmorphic SOC aesthetic)
 - **Backend:** Python, FastAPI, Uvicorn (ASGI)
@@ -30,7 +30,7 @@ By capturing the "ELEVATED" state of network anomalies, PROGNOS provides securit
 
 ---
 
-## 🚀 How to Run Locally
+## How to Run Locally
 
 ### 1. Start the FastAPI Backend
 The backend runs an asynchronous background loop that processes telemetry CSVs and serves REST endpoints.
@@ -68,7 +68,7 @@ npm run dev
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```text
 PROGNOS/
