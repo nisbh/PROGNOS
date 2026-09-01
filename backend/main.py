@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import datetime
 import random
@@ -258,3 +258,43 @@ def get_history(limit: int = 5):
     # API expects a list of {ts, class}
     formatted = [{"ts": item["ts"], "class": item["class"]} for item in HISTORY_LOG[:limit]]
     return {"history": formatted}
+
+@app.post("/upload-replay")
+async def upload_replay(file: UploadFile = File(...)):
+    global SIMULATION_TICK, HISTORY_LOG, TRAFFIC_HISTORY
+    
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Only CSV files are supported")
+        
+    csv_path = os.path.join(os.path.dirname(__file__), "..", "data", "demo_replay.csv")
+    
+    # Save the uploaded file, overwriting the current demo_replay.csv
+    with open(csv_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+        
+    # Reset simulation state so the loop restarts from the new file instantly
+    SIMULATION_TICK = 0
+    HISTORY_LOG.clear()
+    TRAFFIC_HISTORY.clear()
+    
+    # Pre-populate history with 5 normal ticks so the dashboard isn't empty on load
+    df_replay = pd.read_csv(csv_path) if os.path.exists(csv_path) else pd.DataFrame([[0]*12], columns=FEATURE_NAMES)
+    for i in range(5):
+        df = get_traffic_state_from_csv(0, df_replay)
+        pred_class, conf, probs, top_features = run_ml_inference(df)
+        ts = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=(5-i)*10)).isoformat()
+        HISTORY_LOG.insert(0, {
+            "ts": ts,
+            "class": pred_class,
+            "confidence": conf,
+            "probs": probs,
+            "top_features": top_features
+        })
+        TRAFFIC_HISTORY.insert(0, {
+            "timestamp": ts,
+            "connections_per_sec": float(df.iloc[0]["connections_per_sec"]),
+            "syn_rate": float(df.iloc[0]["syn_rate"])
+        })
+        
+    return {"status": "success", "message": f"Successfully uploaded {file.filename} and restarted simulation."}

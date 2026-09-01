@@ -57,6 +57,18 @@ export async function fetchHistory(limit: number = 5, baseUrl: string = API_BASE
   return res.json();
 }
 
+export async function uploadReplay(file: File, baseUrl: string = API_BASE_URL): Promise<{status: string, message: string}> {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const res = await fetch(`${baseUrl}/upload-replay`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) throw new Error(`Failed to upload replay (HTTP ${res.status})`);
+  return res.json();
+}
+
 export interface FetchResult {
   data: DashboardData;
   error: string | null;

@@ -1,6 +1,7 @@
-import React from 'react';
-import { LayoutDashboard, ShieldAlert, Shield, Radio, Activity } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { LayoutDashboard, ShieldAlert, Shield, Radio, Activity, UploadCloud, Loader2 } from 'lucide-react';
 import type { ActiveTab } from '../types/dashboard';
+import { uploadReplay } from '../services/api';
 
 interface SidebarProps {
   activeTab: ActiveTab;
@@ -13,6 +14,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onTabChange,
   backendOnline,
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+      await uploadReplay(file);
+      // Reset input so the same file can be uploaded again if needed
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert('Failed to upload replay CSV. Ensure the backend is running.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <aside className="w-64 bg-[#0d1322] border-r border-slate-800/80 flex flex-col shrink-0 min-h-screen select-none">
       {/* 1. Brand / Header */}
@@ -35,8 +62,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* 2. Navigation Items */}
-      <div className="flex-1 py-6 px-3 flex flex-col gap-1.5">
+      {/* 2. Upload Custom Replay */}
+      <div className="px-3 pt-5 pb-2 flex flex-col gap-2 border-b border-slate-800/80">
+        <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          Simulation Data
+        </div>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleFileChange} 
+          accept=".csv" 
+          className="hidden" 
+        />
+        <button
+          onClick={handleUploadClick}
+          disabled={isUploading || !backendOnline}
+          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 border ${
+            isUploading || !backendOnline
+              ? 'bg-slate-900 border-slate-800 text-slate-500 cursor-not-allowed'
+              : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/20 hover:border-indigo-500/50 shadow-[0_0_12px_rgba(99,102,241,0.1)] cursor-pointer'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {isUploading ? (
+              <Loader2 className="w-4 h-4 shrink-0 animate-spin text-indigo-400" />
+            ) : (
+              <UploadCloud className="w-4 h-4 shrink-0" />
+            )}
+            <span>{isUploading ? 'Uploading...' : 'Upload Custom CSV'}</span>
+          </div>
+        </button>
+      </div>
+
+      {/* 3. Navigation Items */}
+      <div className="flex-1 py-4 px-3 flex flex-col gap-1.5">
         <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
           Navigation
         </div>
