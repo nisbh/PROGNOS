@@ -24,7 +24,7 @@ export const BackendStatusBanner: React.FC<BackendStatusBannerProps> = ({
             <Terminal className="w-3.5 h-3.5 text-sky-400" />
             <span>To start the backend server, run:</span>
             <code className="text-slate-200 bg-slate-900 px-2 py-0.5 rounded border border-slate-800 font-mono">
-              uv run uvicorn backend.main:app --reload
+              python -m uvicorn backend.main:app --reload
             </code>
           </div>
         </div>
