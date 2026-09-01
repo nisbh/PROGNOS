@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Header } from './components/Header';
-import { OverviewTab } from './components/OverviewTab';
-import { AnalysisTab } from './components/AnalysisTab';
-import { ThreatContextTab } from './components/ThreatContextTab';
+import { Sidebar } from './components/Sidebar';
+import { TopHeader } from './components/TopHeader';
+import { DashboardPage } from './components/DashboardPage';
+import { ThreatContextPage } from './components/ThreatContextPage';
 import { BackendStatusBanner } from './components/BackendStatusBanner';
 import type { DashboardData, ActiveTab } from './types/dashboard';
 import { fetchAllDashboardData, API_BASE_URL } from './services/api';
 import { Shield } from 'lucide-react';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
 
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     currentStatus: null,
@@ -58,51 +58,54 @@ export function App() {
     };
   }, [loadData]);
 
-
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans">
-      {/* Clean Top Navigation Bar */}
-      <Header
+    <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-row font-sans">
+      {/* 1. Fixed Left Sidebar */}
+      <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
         backendOnline={backendOnline}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-8 flex flex-col">
-        {/* Backend Offline Notice */}
-        {!backendOnline && (
-          <BackendStatusBanner errorMessage={errorMessage} />
-        )}
+      {/* 2. Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+        {/* Minimal Top Header */}
+        <TopHeader
+          activeTab={activeTab}
+          backendOnline={backendOnline}
+        />
 
-        {/* 3 Simple Tab Pages */}
-        {activeTab === 'overview' && (
-          <OverviewTab data={dashboardData} />
-        )}
+        {/* Scrollable Page Body */}
+        <main className="flex-1 p-6 lg:p-8 flex flex-col">
+          {/* Backend Offline Notice */}
+          {!backendOnline && (
+            <BackendStatusBanner errorMessage={errorMessage} />
+          )}
 
-        {activeTab === 'analysis' && (
-          <AnalysisTab data={dashboardData} />
-        )}
+          {/* Page Routing */}
+          {activeTab === 'dashboard' && (
+            <DashboardPage data={dashboardData} />
+          )}
 
-        {activeTab === 'threat-context' && (
-          <ThreatContextTab data={dashboardData} />
-        )}
-      </main>
+          {activeTab === 'threat-context' && (
+            <ThreatContextPage data={dashboardData} />
+          )}
+        </main>
 
-      {/* Clean, Simple Footer */}
-      <footer className="w-full bg-[#0d1322] border-t border-slate-800/80 py-4 px-4 lg:px-8 mt-auto">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
-          <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-sky-400" />
-            <span className="text-slate-400 font-medium">PROGNOS</span>
-            <span>• AI Network Attack Forecasting</span>
+        {/* Minimal Footer */}
+        <footer className="w-full bg-[#0d1322] border-t border-slate-800/80 py-3.5 px-6 lg:px-8 mt-auto">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-2">
+              <Shield className="w-3.5 h-3.5 text-sky-400" />
+              <span className="text-slate-400 font-medium">PROGNOS</span>
+              <span>• AI Network Attack Forecasting</span>
+            </div>
+            <span>Smart India Hackathon (SIH 2026)</span>
           </div>
-          <span>Smart India Hackathon (SIH 2026)</span>
-        </div>
-      </footer>
+        </footer>
+      </div>
     </div>
   );
 }
 
 export default App;
-

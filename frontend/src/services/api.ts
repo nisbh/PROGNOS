@@ -97,23 +97,78 @@ export async function fetchAllDashboardData(baseUrl: string = API_BASE_URL): Pro
   }
 }
 
-// Format exact backend feature names cleanly without inventing new concepts
-export function formatFeatureName(rawName: string): string {
-  switch (rawName) {
-    case 'SYN_rate_slope':
-      return 'SYN Rate Slope';
-    case 'unique_source_ips_pct_change':
-      return 'Unique Source IPs (% change)';
-    case 'connection_count':
-      return 'Connection Count';
-    case 'connection_count_rolling_mean':
-      return 'Connection Count (Rolling Mean)';
-    default:
-      return rawName.replace(/_/g, ' ');
-  }
+// Format risk score with a maximum of 2 decimal places (e.g. 14.7619 -> 14.76, 48.0 -> 48, 9.126 -> 9.13)
+export function formatRiskScore(score?: number | null): string {
+  if (score === undefined || score === null || isNaN(score)) return '0';
+  const rounded = Math.round((score + Number.EPSILON) * 100) / 100;
+  return rounded.toString();
 }
 
-// Generate simple plain-English explanation strictly based on actual backend features
+// Format backend telemetry variable names into clean, readable Title Case without snake_case
+export function formatFeatureName(rawName: string): string {
+  if (!rawName) return '';
+
+  // Direct specific mappings
+  const knownMappings: Record<string, string> = {
+    SYN_rate_slope: 'SYN Rate Slope',
+    syn_rate_slope: 'SYN Rate Slope',
+    unique_source_ips_pct_change: 'Unique Source IPs (% Change)',
+    connection_count: 'Connection Count',
+    connection_count_rolling_mean: 'Connection Count (Rolling Mean)',
+    syn_rate_1m_avg: 'SYN Rate 1 Minute Average',
+    connections_1m_avg: 'Connections 1 Minute Average',
+    packet_size_1m_avg: 'Packet Size 1 Minute Average',
+    flow_duration_mean: 'Flow Duration Mean',
+  };
+
+  if (knownMappings[rawName]) {
+    return knownMappings[rawName];
+  }
+
+  // General humanization algorithm
+  // 1. Replace underscores and hyphens with spaces
+  let formatted = rawName.replace(/[_-]/g, ' ');
+
+  // 2. Expand common abbreviations
+  const abbreviationMap: Record<string, string> = {
+    '1m': '1 Minute',
+    '5m': '5 Minute',
+    '10m': '10 Minute',
+    '15m': '15 Minute',
+    'avg': 'Average',
+    'std': 'Std Dev',
+    'pct': 'Percent',
+    'ips': 'IPs',
+    'syn': 'SYN',
+    'tcp': 'TCP',
+    'udp': 'UDP',
+    'http': 'HTTP',
+    'icmp': 'ICMP',
+    'dos': 'DoS',
+    'ddos': 'DDoS',
+    'cnt': 'Count',
+    'len': 'Length',
+    'dur': 'Duration',
+    'max': 'Max',
+    'min': 'Min',
+    'sec': 'Second',
+  };
+
+  // Split into words, apply token replacements, and capitalize
+  const words = formatted.split(/\s+/).filter(Boolean);
+  const transformedWords = words.map((word) => {
+    const lower = word.toLowerCase();
+    if (abbreviationMap[lower]) {
+      return abbreviationMap[lower];
+    }
+    // Capitalize first letter
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  });
+
+  return transformedWords.join(' ');
+}
+
+// Generate simple plain-English explanation strictly based on actual backend features and values
 export function generatePlainEnglishExplanation(
   features: ExplanationFeature[] | undefined,
   threatClass: ThreatClass | undefined
@@ -189,3 +244,31 @@ export function formatTimestamp(isoString?: string): string {
     return isoString;
   }
 }
+
+// Explicitly sort traffic telemetry points ascending (oldest -> newest, left -> right)
+export function getSortedTrafficHistory(traffic?: TrafficResponse | null): Array<{
+  timestamp: string;
+  connections_per_sec: number;
+  syn_rate: number;
+  time: string;
+}> {
+  if (!traffic?.history) return [];
+  const sorted = [...traffic.history].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+  return sorted.map((pt) => ({
+    ...pt,
+    time: formatTimestamp(pt.timestamp),
+  }));
+}
+
+// Explicitly sort risk classification history ascending (oldest -> newest, left -> right)
+export function getSortedRiskHistory(history?: HistoryResponse | null): Array<{
+  ts: string;
+  class: ThreatClass;
+}> {
+  if (!history?.history) return [];
+  return [...history.history].sort(
+    (a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime()
+  );
+}

@@ -1,5 +1,6 @@
 export type ThreatClass = 'NORMAL' | 'ELEVATED' | 'NEAR-TERM' | 'IMMINENT' | string;
-export type ActiveTab = 'overview' | 'analysis' | 'threat-context';
+export type ActiveTab = 'dashboard' | 'threat-context';
+
 
 export interface CurrentStatusResponse {
   risk_level: ThreatClass;
