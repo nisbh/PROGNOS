@@ -44,3 +44,6 @@ Reference Materials(Formal)/
 *.pcap
 *.pcapng
 PROGNOS_CONTEXT.md
+*.jpeg
+*.zip
+*.md5
