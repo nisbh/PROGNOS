@@ -1,21 +1,21 @@
 {
   "attacks": {
-    "DoS GoldenEye": {
+    "SYN Flood": {
       "tactic": {
         "id": "TA0040",
         "name": "Impact"
       },
       "technique": {
-        "id": "T1499",
-        "name": "Endpoint Denial of Service"
+        "id": "T1498",
+        "name": "Network Denial of Service"
       },
       "sub_technique": {
-        "id": "T1499.004",
-        "name": "Application or System Exploitation"
+        "id": "T1498.001",
+        "name": "Direct Network Flood"
       },
-      "description": "Attempts to exhaust the web server's resources by keeping HTTP connections open as long as possible, preventing legitimate users from accessing the service."
+      "description": "Massive volume of TCP SYN packets designed to exhaust connection state tables on the target network firewall or server."
     },
-    "DoS slowloris": {
+    "Application DoS": {
       "tactic": {
         "id": "TA0040",
         "name": "Impact"
@@ -28,7 +28,37 @@
         "id": "T1499.004",
         "name": "Application or System Exploitation"
       },
-      "description": "Attempts to exhaust the web server's resources by keeping HTTP connections open as long as possible, preventing legitimate users from accessing the service."
+      "description": "Attempts to exhaust application resources (e.g., GoldenEye, Slowloris) using targeted requests rather than pure volumetric bandwidth."
+    },
+    "Port Scanning": {
+      "tactic": {
+        "id": "TA0007",
+        "name": "Discovery"
+      },
+      "technique": {
+        "id": "T1046",
+        "name": "Network Service Discovery"
+      },
+      "sub_technique": {
+        "id": "None",
+        "name": "None"
+      },
+      "description": "Adversaries may attempt to get a listing of services listening on remote hosts and local network infrastructure devices."
+    },
+    "Brute Force": {
+      "tactic": {
+        "id": "TA0006",
+        "name": "Credential Access"
+      },
+      "technique": {
+        "id": "T1110",
+        "name": "Brute Force"
+      },
+      "sub_technique": {
+        "id": "T1110.001",
+        "name": "Password Guessing"
+      },
+      "description": "Systematic guessing of passwords, identifiable by uniform connection durations and repetitive request sizes over a single service port."
     }
   }
 }
