@@ -5,6 +5,9 @@ import random
 import json
 import os
 
+import joblib
+import numpy as np
+
 app = FastAPI(title="PROGNOS Attack Forecasting API")
 
 # Enable CORS for the React frontend
@@ -104,4 +107,21 @@ def get_history(limit: int = 5):
         })
     return {"history": history}
 
+# --- Optional ML Model Loading ---
+MODEL = None
+LABEL_MAP = None
+
+model_path = os.path.join(os.path.dirname(__file__), "..", "ml", "model.pkl")
+label_map_path = os.path.join(os.path.dirname(__file__), "..", "ml", "label_map.pkl")
+
+if os.path.exists(model_path) and os.path.exists(label_map_path):
+    try:
+        MODEL = joblib.load(model_path)
+        LABEL_MAP = joblib.load(label_map_path)
+        print("ML model loaded successfully.")
+    except Exception as e:
+        print(f"Could not load ML model: {e}")
+else:
+    print("ML model not found. Using mock backend data.")
+    
 # To run: uv run uvicorn main:app --reload
