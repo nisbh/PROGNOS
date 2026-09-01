@@ -55,9 +55,13 @@ def train_fusion_model():
         eval_metric="mlogloss",
         use_label_encoder=False,
         random_state=42,
-        max_depth=10,        # Slightly deeper to learn complex cross-dataset patterns
-        learning_rate=0.05,  # Slower learning rate for better generalization
-        n_estimators=1000,   # High estimator count, but early stopping will cut it off when it overfits
+        max_depth=9,
+        learning_rate=0.19,
+        min_child_weight=3,
+        subsample=0.98,
+        colsample_bytree=0.97,
+        gamma=0.0045,
+        n_estimators=611,
         early_stopping_rounds=20
     )
 

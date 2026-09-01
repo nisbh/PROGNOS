@@ -3,7 +3,7 @@ import numpy as np
 import glob
 import os
 
-def generate_multi_day_training_data(csv_dir: str, output_path: str):
+def generate_multi_day_training_data(csv_dir: str, output_path: str, window_size: str = '10s'):
     print(f"Scanning directory {csv_dir} for CSV files...")
     csv_files = glob.glob(os.path.join(csv_dir, "*.csv"))
     
@@ -51,8 +51,8 @@ def generate_multi_day_training_data(csv_dir: str, output_path: str):
         # Mark if a flow is an attack (ignoring BENIGN and Normal)
         df['is_attack_flow'] = df['Label'].apply(lambda x: 1 if str(x).upper() not in ['BENIGN', 'NORMAL'] else 0)
         
-        print("Grouping into 10-second rolling windows...")
-        agg_df = df.resample('10s').agg(
+        print(f"Grouping into {window_size} rolling windows...")
+        agg_df = df.resample(window_size).agg(
             connections_per_sec=('Label', 'count'),
             syn_rate=('SYN Flag Count', 'sum'),
             avg_packet_size=('Average Packet Size', 'mean'),
@@ -63,8 +63,9 @@ def generate_multi_day_training_data(csv_dir: str, output_path: str):
             attack_active=('is_attack_flow', 'max')
         )
         
-        agg_df['connections_per_sec'] = agg_df['connections_per_sec'] / 10.0
-        agg_df['syn_rate'] = agg_df['syn_rate'] / 10.0
+        seconds = pd.to_timedelta(window_size).total_seconds()
+        agg_df['connections_per_sec'] = agg_df['connections_per_sec'] / seconds
+        agg_df['syn_rate'] = agg_df['syn_rate'] / seconds
         agg_df = agg_df.fillna(0)
         
         # Drop empty windows to prevent empty traffic artifacts
@@ -160,7 +161,9 @@ def generate_multi_day_training_data(csv_dir: str, output_path: str):
     print(f"\nSaved perfectly balanced multi-day dataset to {output_path}!")
 
 if __name__ == "__main__":
+    import sys
+    window = sys.argv[1] if len(sys.argv) > 1 else '10s'
     csv_directory = r"N:\Github Projects\PROGNOS\SIH26153\CIC2017\GeneratedLabelledFlows"
     out_file = r"N:\Github Projects\PROGNOS\data\training_features.csv"
     
-    generate_multi_day_training_data(csv_directory, out_file)
+    generate_multi_day_training_data(csv_directory, out_file, window)

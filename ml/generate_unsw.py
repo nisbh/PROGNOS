@@ -4,8 +4,7 @@ import os
 import glob
 import time
 
-def generate_unsw_data():
-    data_dir = r"N:\Github Projects\PROGNOS\data\CSV Files"
+def generate_unsw_training_data(data_dir: str, output_path: str, window_size: str = '10s'):
     csv_files = glob.glob(os.path.join(data_dir, "UNSW-NB15_[1-4].csv"))
     
     if not csv_files:
@@ -40,7 +39,6 @@ def generate_unsw_data():
         
         # Sort by timestamp
         df = df.sort_values('Timestamp')
-        df = df.set_index('Timestamp')
         
         print("Mapping features to PROGNOS format...")
         # Map UNSW-NB15 to our 8 core features
@@ -61,9 +59,10 @@ def generate_unsw_data():
         
         # 7. is_attack_flow
         df['is_attack_flow'] = pd.to_numeric(df['Label'], errors='coerce').fillna(0)
+        df = df.set_index('Timestamp')
         
-        print("Grouping into 10-second rolling windows...")
-        agg_df = df.resample('10s').agg(
+        print(f"Grouping into {window_size} rolling windows...")
+        agg_df = df.resample(window_size).agg(
             connections_per_sec=('Label', 'count'),
             syn_rate=('SYN_equivalent', 'sum'),
             avg_packet_size=('Average Packet Size', 'mean'),
@@ -74,8 +73,9 @@ def generate_unsw_data():
             attack_active=('is_attack_flow', 'max')
         )
         
-        agg_df['connections_per_sec'] = agg_df['connections_per_sec'] / 10.0
-        agg_df['syn_rate'] = agg_df['syn_rate'] / 10.0
+        seconds = pd.to_timedelta(window_size).total_seconds()
+        agg_df['connections_per_sec'] = agg_df['connections_per_sec'] / seconds
+        agg_df['syn_rate'] = agg_df['syn_rate'] / seconds
         agg_df = agg_df.fillna(0)
         
         print("Calculating temporal trend features (rolling means & derivatives)...")
@@ -142,9 +142,12 @@ def generate_unsw_data():
     print("Class distribution:")
     print(balanced_df['label'].value_counts())
     
-    out_path = r"N:\Github Projects\PROGNOS\data\training_features_unsw.csv"
-    balanced_df.to_csv(out_path, index=False)
-    print(f"\nSaved perfectly balanced multi-day dataset to {out_path}!")
+    balanced_df.to_csv(output_path, index=False)
+    print(f"\nSaved perfectly balanced multi-day dataset to {output_path}!")
 
 if __name__ == "__main__":
-    generate_unsw_data()
+    import sys
+    window = sys.argv[1] if len(sys.argv) > 1 else '10s'
+    csv_directory = r"N:\Github Projects\PROGNOS\data\CSV Files"
+    output_csv = "data/training_features_unsw.csv"
+    generate_unsw_training_data(csv_directory, output_csv, window)

@@ -1,0 +1,8 @@
+Best Hyperparameters found by Optuna:
+learning_rate: 0.18978718064242567
+max_depth: 9
+min_child_weight: 3
+subsample: 0.9800681867649121
+colsample_bytree: 0.9729458686333023
+gamma: 0.004530695840348934
+n_estimators: 611
