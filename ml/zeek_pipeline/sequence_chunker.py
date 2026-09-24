@@ -49,7 +49,7 @@ def create_time_series_sequences(df, window_seconds=10):
         agg_dict['uid'] = 'count'
     
     # Perform the resample and fill empty windows with 0
-    resampled = df.resample(f'{window_seconds}S').agg(agg_dict).fillna(0)
+    resampled = df.resample(f'{window_seconds}s').agg(agg_dict).fillna(0)
     
     # Rename uid count to something more descriptive
     if 'uid' in resampled.columns:
