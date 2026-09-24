@@ -100,6 +100,6 @@ def train_world_model(csv_path="data/sequences.csv", epochs=10, batch_size=32, d
     
 if __name__ == "__main__":
     try:
-        train_world_model(epochs=5)
+        train_world_model(csv_path="data/master_dataset_labeled.csv", epochs=5)
     except FileNotFoundError:
         print("sequences.csv not found. Please run Zeek and sequence_chunker.py first.")
