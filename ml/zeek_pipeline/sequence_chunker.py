@@ -32,7 +32,11 @@ def create_time_series_sequences(df, window_seconds=10):
     numeric_cols = [
         'duration', 'orig_bytes', 'resp_bytes', 'orig_pkts', 'resp_pkts',
         'min_ttl_orig', 'max_ttl_orig', 'min_ttl_resp', 'max_ttl_resp',
-        'avg_win_orig', 'avg_win_resp'
+        'avg_win_orig', 'avg_win_resp',
+        'payload_min_orig', 'payload_max_orig', 'payload_min_resp', 'payload_max_resp',
+        'frag_count', 'retrans_orig', 'retrans_resp',
+        'flag_syn', 'flag_ack', 'flag_fin', 'flag_rst', 'flag_psh', 'flag_urg',
+        'iat_mean', 'iat_max', 'iat_var'
     ]
     
     # Handle Zeek's '-' null values and coerce to floats
@@ -47,13 +51,26 @@ def create_time_series_sequences(df, window_seconds=10):
     # Count the number of unique connections/flows in this window
     if 'uid' in df.columns:
         agg_dict['uid'] = 'count'
+        
+    # Extract port scan signatures (unique destination ports in the 10s window)
+    if 'id.resp_p' in df.columns:
+        agg_dict['id.resp_p'] = 'nunique'
     
     # Perform the resample and fill empty windows with 0
     resampled = df.resample(f'{window_seconds}s').agg(agg_dict).fillna(0)
     
-    # Rename uid count to something more descriptive
+    # Rename columns to something more descriptive
+    rename_dict = {}
     if 'uid' in resampled.columns:
-        resampled.rename(columns={'uid': 'flow_count'}, inplace=True)
+        rename_dict['uid'] = 'flow_count'
+    if 'id.resp_p' in resampled.columns:
+        rename_dict['id.resp_p'] = 'unique_dest_ports_scan_signature'
+        
+    resampled.rename(columns=rename_dict, inplace=True)
+    
+    # Calculate bidirectional flow ratio
+    if 'orig_bytes' in resampled.columns and 'resp_bytes' in resampled.columns:
+        resampled['bidirectional_flow_ratio'] = resampled['orig_bytes'] / (resampled['resp_bytes'] + 1e-9)
         
     return resampled
 
