@@ -85,9 +85,7 @@ event new_packet(c: connection, p: pkt_hdr) {
         local ttl = p$ip$ttl;
         local pkt_len = p$ip$len;
         
-        if ( p$ip?$mf && p$ip$mf ) {
-            c$prognos_info$frag_count += 1;
-        }
+        # Fragment check disabled: mf flag not accessible in this Zeek version's ip_hdr
         
         if ( is_orig ) {
             if ( ! c$prognos_info?$min_ttl_orig || ttl < c$prognos_info$min_ttl_orig )
@@ -133,15 +131,15 @@ event new_packet(c: connection, p: pkt_hdr) {
     }
     
     # IAT Calculation
-    local current_time = network_time();
+    local pkt_time = network_time();
     if ( c?$last_pkt_time ) {
-        local iat = interval_to_double(current_time - c$last_pkt_time);
+        local iat = interval_to_double(pkt_time - c$last_pkt_time);
         c$iat_sum += iat;
         c$iat_sq_sum += (iat * iat);
         c$iat_count += 1;
         if ( iat > c$iat_max ) c$iat_max = iat;
     }
-    c$last_pkt_time = current_time;
+    c$last_pkt_time = pkt_time;
 }
 
 event connection_state_remove(c: connection) {
