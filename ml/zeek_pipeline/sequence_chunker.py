@@ -25,9 +25,6 @@ def create_time_series_sequences(df, window_seconds=10):
     # Sort chronologically
     df = df.sort_values('ts')
     
-    # Set time as index for pandas resampling
-    df.set_index('ts', inplace=True)
-    
     # Identify numeric columns for aggregation
     numeric_cols = [
         'duration', 'orig_bytes', 'resp_bytes', 'orig_pkts', 'resp_pkts',
@@ -56,8 +53,14 @@ def create_time_series_sequences(df, window_seconds=10):
     if 'id.resp_p' in df.columns:
         agg_dict['id.resp_p'] = 'nunique'
     
-    # Perform the resample and fill empty windows with 0
-    resampled = df.resample(f'{window_seconds}s').agg(agg_dict).fillna(0)
+    # Group by Source IP to track per-machine trajectories!
+    if 'id.orig_h' in df.columns:
+        resampled = df.groupby('id.orig_h').resample(f'{window_seconds}s', on='ts').agg(agg_dict).fillna(0)
+        resampled = resampled.reset_index()
+    else:
+        # Fallback for old logs
+        resampled = df.resample(f'{window_seconds}s', on='ts').agg(agg_dict).fillna(0)
+        resampled = resampled.reset_index()
     
     # Rename columns to something more descriptive
     rename_dict = {}
