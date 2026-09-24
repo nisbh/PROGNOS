@@ -48,22 +48,13 @@ event new_connection(c: connection) {
     c$prognos_info = info;
 }
 
-event tcp_packet(c: connection, is_orig: bool, flags: string, seq: count, ack: count, len: count, payload_len: count, tcp_flags: count, window: count) {
-    if ( ! c?$prognos_info ) return;
-    
-    if ( is_orig ) {
-        c$sum_win_orig += window;
-    } else {
-        c$sum_win_resp += window;
-    }
-}
-
 event new_packet(c: connection, p: pkt_hdr) {
     if ( ! c?$prognos_info ) return;
     
+    local is_orig = F;
     if ( p?$ip ) {
+        is_orig = (p$ip$src == c$id$orig_h);
         local ttl = p$ip$ttl;
-        local is_orig = (p$ip$src == c$id$orig_h);
         
         if ( is_orig ) {
             if ( ! c$prognos_info?$min_ttl_orig || ttl < c$prognos_info$min_ttl_orig )
@@ -75,6 +66,17 @@ event new_packet(c: connection, p: pkt_hdr) {
                 c$prognos_info$min_ttl_resp = ttl;
             if ( ! c$prognos_info?$max_ttl_resp || ttl > c$prognos_info$max_ttl_resp )
                 c$prognos_info$max_ttl_resp = ttl;
+        }
+    } else if ( p?$ip6 ) {
+        is_orig = (p$ip6$src == c$id$orig_h);
+    }
+    
+    if ( p?$tcp ) {
+        local win = p$tcp$win;
+        if ( is_orig ) {
+            c$sum_win_orig += win;
+        } else {
+            c$sum_win_resp += win;
         }
     }
 }
