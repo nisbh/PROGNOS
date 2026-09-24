@@ -26,6 +26,13 @@ def train_baseline_logistic_regression(train_loader):
     y_train = np.concatenate(y_train)
     
     clf = LogisticRegression(max_iter=1000, class_weight='balanced')
+    
+    # Sklearn will crash if we try to train on data with only 1 class. 
+    # Since we haven't labeled the data yet, everything is currently class 0.
+    if len(np.unique(y_train)) < 2:
+        print("Warning: Only one class (0: Normal) found in dataset. Skipping Logistic Regression baseline until data is labeled.")
+        return None
+        
     clf.fit(X_train, y_train)
     
     # Normally we evaluate on a test set, testing on train just for baseline confirmation
