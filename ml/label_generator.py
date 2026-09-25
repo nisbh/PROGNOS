@@ -135,9 +135,8 @@ def label_cic_ids_2017(sequences_csv, labeled_csv_dir, output_path, window_secon
         
         malicious = label_df[label_df['mitre'] > 0]
         if len(malicious) > 0:
-            malicious['window_ts'] = malicious[ts_col].dt.floor(f'{window_seconds}s')
-            window_labels = malicious.groupby([src_col, 'window_ts'])['mitre'].max().reset_index()
-            window_labels.columns = ['src_ip', 'window_ts', 'mitre_stage']
+            window_labels = malicious.groupby(src_col)['mitre'].max().reset_index()
+            window_labels.columns = ['src_ip', 'mitre_stage']
             all_malicious_windows.append(window_labels)
 
     if not all_malicious_windows:
@@ -145,8 +144,8 @@ def label_cic_ids_2017(sequences_csv, labeled_csv_dir, output_path, window_secon
         return
         
     master_attack_db = pd.concat(all_malicious_windows, ignore_index=True)
-    master_attack_db = master_attack_db.groupby(['src_ip', 'window_ts'])['mitre_stage'].max().reset_index()
-    print(f"Built Attack Database: {len(master_attack_db)} malicious windows found.")
+    master_attack_db = master_attack_db.groupby('src_ip')['mitre_stage'].max().reset_index()
+    print(f"Built Attack Database: {len(master_attack_db)} unique attacker IPs found.")
 
     print(f"\nStreaming massive sequences file: {sequences_csv}")
     print("Labeling in chunks to prevent RAM overflow...")
@@ -166,12 +165,11 @@ def label_cic_ids_2017(sequences_csv, labeled_csv_dir, output_path, window_secon
         chunk['infiltration_prob'] = 0.0
         
         if 'id.orig_h' in chunk.columns:
-            chunk['window_ts'] = chunk['ts'].dt.floor(f'{window_seconds}s')
             
             merged = chunk.merge(
                 master_attack_db,
-                left_on=['id.orig_h', 'window_ts'],
-                right_on=['src_ip', 'window_ts'],
+                left_on='id.orig_h',
+                right_on='src_ip',
                 how='left'
             )
             
