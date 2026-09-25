@@ -97,44 +97,24 @@ def label_cic_ids_2017(sequences_csv, labeled_csv_dir, output_path, window_secon
         3. Joining on (Source IP, Window Timestamp) with our sequences.csv
         4. For windows with mixed traffic, the most severe label wins
     """
-    print(f"Loading sequences from: {sequences_csv}")
-    seq_df = pd.read_csv(sequences_csv)
-
-    # Ensure timestamp column exists and is parsed
-    if 'ts' in seq_df.columns:
-        seq_df['ts'] = pd.to_datetime(seq_df['ts'])
-    else:
-        print("Error: sequences.csv has no 'ts' column.")
-        return
-
-    # Initialize labels
-    seq_df['mitre_label'] = 0
-    seq_df['infiltration_prob'] = 0.0
-
     # Find all labeled CSVs in the directory
     csv_files = glob.glob(os.path.join(labeled_csv_dir, '*.csv'))
     if not csv_files:
         print(f"Error: No CSV files found in {labeled_csv_dir}")
         return
 
-    print(f"Found {len(csv_files)} labeled CSV files.")
+    print(f"Found {len(csv_files)} labeled CSV files. Compiling attack database first...")
+    
+    all_malicious_windows = []
 
     for csv_file in csv_files:
-        print(f"  Processing: {os.path.basename(csv_file)}")
         try:
-            # CIC-IDS-2017 CSVs have inconsistent column names with leading spaces
             label_df = pd.read_csv(csv_file, encoding='utf-8', low_memory=False)
         except Exception as e:
-            print(f"    Skipping (read error): {e}")
             continue
 
-        # Normalize column names: strip whitespace
         label_df.columns = label_df.columns.str.strip()
-
-        # Identify the key columns (they vary across dataset versions)
-        src_col = None
-        ts_col = None
-        label_col = None
+        src_col, ts_col, label_col = None, None, None
 
         for col in label_df.columns:
             col_lower = col.lower()
@@ -146,66 +126,81 @@ def label_cic_ids_2017(sequences_csv, labeled_csv_dir, output_path, window_secon
                 label_col = col
 
         if not all([src_col, ts_col, label_col]):
-            print(f"    Skipping (missing columns). Found: src={src_col}, ts={ts_col}, label={label_col}")
             continue
 
-        # Parse timestamps
         label_df[ts_col] = pd.to_datetime(label_df[ts_col], errors='coerce', dayfirst=True)
         label_df = label_df.dropna(subset=[ts_col])
-
-        # Map labels to MITRE
-        label_df['mitre'] = label_df[label_col].str.strip().map(CIC_IDS_2017_LABEL_MAP)
-        label_df['mitre'] = label_df['mitre'].fillna(0).astype(int)
-
-        # Floor timestamps to 10-second windows
-        label_df['window_ts'] = label_df[ts_col].dt.floor(f'{window_seconds}s')
-
-        # For each (Source IP, Window), take the MAXIMUM severity label
-        # This ensures that if even one attack flow exists in a window, it gets flagged
+        label_df['mitre'] = label_df[label_col].str.strip().map(CIC_IDS_2017_LABEL_MAP).fillna(0).astype(int)
+        
         malicious = label_df[label_df['mitre'] > 0]
-        if len(malicious) == 0:
-            print(f"    No attack flows found in this file.")
-            continue
+        if len(malicious) > 0:
+            malicious['window_ts'] = malicious[ts_col].dt.floor(f'{window_seconds}s')
+            window_labels = malicious.groupby([src_col, 'window_ts'])['mitre'].max().reset_index()
+            window_labels.columns = ['src_ip', 'window_ts', 'mitre_stage']
+            all_malicious_windows.append(window_labels)
 
-        window_labels = malicious.groupby([src_col, 'window_ts'])['mitre'].max().reset_index()
-        window_labels.columns = ['src_ip', 'window_ts', 'mitre_stage']
+    if not all_malicious_windows:
+        print("Error: No malicious traffic found in the label CSVs!")
+        return
+        
+    master_attack_db = pd.concat(all_malicious_windows, ignore_index=True)
+    master_attack_db = master_attack_db.groupby(['src_ip', 'window_ts'])['mitre_stage'].max().reset_index()
+    print(f"Built Attack Database: {len(master_attack_db)} malicious windows found.")
 
-        print(f"    Found {len(window_labels)} malicious windows across {window_labels['src_ip'].nunique()} IPs.")
-
-        # Match with our sequences
-        if 'id.orig_h' in seq_df.columns:
-            seq_df['window_ts'] = seq_df['ts'].dt.floor(f'{window_seconds}s')
-
-            # Merge: left join so we keep all sequence rows
-            merged = seq_df.merge(
-                window_labels,
+    print(f"\nStreaming massive sequences file: {sequences_csv}")
+    print("Labeling in chunks to prevent RAM overflow...")
+    
+    chunksize = 2_000_000
+    first_write = True
+    total_processed = 0
+    label_counts = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
+    
+    for chunk in pd.read_csv(sequences_csv, chunksize=chunksize):
+        if 'ts' not in chunk.columns:
+            print("Error: sequences.csv has no 'ts' column.")
+            return
+            
+        chunk['ts'] = pd.to_datetime(chunk['ts'])
+        chunk['mitre_label'] = 0
+        chunk['infiltration_prob'] = 0.0
+        
+        if 'id.orig_h' in chunk.columns:
+            chunk['window_ts'] = chunk['ts'].dt.floor(f'{window_seconds}s')
+            
+            merged = chunk.merge(
+                master_attack_db,
                 left_on=['id.orig_h', 'window_ts'],
                 right_on=['src_ip', 'window_ts'],
                 how='left'
             )
-
-            # Update labels where we found a match
+            
             mask = merged['mitre_stage'].notna()
-            seq_df.loc[mask, 'mitre_label'] = merged.loc[mask, 'mitre_stage'].astype(int)
-            seq_df.loc[mask, 'infiltration_prob'] = 1.0
+            chunk.loc[mask, 'mitre_label'] = merged.loc[mask, 'mitre_stage'].astype(int)
+            chunk.loc[mask, 'infiltration_prob'] = 1.0
+            chunk.drop(columns=['window_ts'], inplace=True, errors='ignore')
 
-            # Clean up temp column
-            if 'window_ts' in seq_df.columns:
-                seq_df.drop(columns=['window_ts'], inplace=True)
-            if 'mitre_stage' in merged.columns:
-                merged.drop(columns=['mitre_stage', 'src_ip'], inplace=True, errors='ignore')
+        # Track distributions
+        counts = chunk['mitre_label'].value_counts()
+        for k, v in counts.items():
+            label_counts[k] += v
 
-    # Print summary
-    print("\n--- Label Distribution ---")
+        # Stream to disk
+        mode = 'w' if first_write else 'a'
+        header = True if first_write else False
+        chunk.to_csv(output_path, mode=mode, header=header, index=False)
+        
+        total_processed += len(chunk)
+        print(f"  ... Labeled {total_processed:,} rows")
+        first_write = False
+
+    print("\n--- Final Label Distribution ---")
     label_names = {0: 'Normal', 1: 'Reconnaissance', 2: 'Initial Access', 3: 'Lateral Movement', 4: 'C2'}
     for val, name in label_names.items():
-        count = (seq_df['mitre_label'] == val).sum()
-        pct = count / len(seq_df) * 100
+        count = label_counts.get(val, 0)
+        pct = (count / total_processed * 100) if total_processed > 0 else 0
         print(f"  {name}: {count:,} ({pct:.1f}%)")
 
-    # Save
-    seq_df.to_csv(output_path, index=False)
-    print(f"\nSaved labeled sequences to: {output_path}")
+    print(f"\nSaved seamlessly to: {output_path}")
 
 
 def label_ctu13(sequences_csv, output_path):
