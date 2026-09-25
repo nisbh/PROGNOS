@@ -79,7 +79,8 @@ if __name__ == '__main__':
     else:
         log_files = [input_path]
 
-    all_sequences = []
+    total_windows = 0
+    first_write = True
     
     for f in log_files:
         try:
@@ -92,17 +93,21 @@ if __name__ == '__main__':
                 continue
                 
             seq_df = create_time_series_sequences(df, window_seconds=args.window)
-            all_sequences.append(seq_df)
+            
+            # Stream directly to disk to prevent RAM explosion
+            mode = 'w' if first_write else 'a'
+            header = True if first_write else False
+            seq_df.to_csv(args.output, mode=mode, header=header, index=False)
+            
+            first_write = False
+            total_windows += len(seq_df)
             print(f"Processed {f.name} -> {len(seq_df)} windows")
+            
         except Exception as e:
             print(f"Skipping corrupted log {f.name}: {e}")
             
-    if not all_sequences:
+    if total_windows == 0:
         print("Error: No valid sequences could be generated from the inputs.")
         exit(1)
         
-    print(f"Concatenating all {len(all_sequences)} chunks...")
-    final_df = pd.concat(all_sequences, ignore_index=True)
-    
-    final_df.to_csv(args.output, index=False)
-    print(f"Saved massive dataset of {len(final_df)} sequence windows to {args.output}")
+    print(f"Saved massive dataset of {total_windows:,} sequence windows to {args.output}")

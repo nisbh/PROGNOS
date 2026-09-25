@@ -32,6 +32,7 @@ import glob
 CIC_IDS_2017_LABEL_MAP = {
     # Normal
     'BENIGN':                       0,
+    'Benign':                       0,
 
     # Reconnaissance (MITRE TA0043)
     'PortScan':                     1,
@@ -39,24 +40,37 @@ CIC_IDS_2017_LABEL_MAP = {
     # Initial Access (MITRE TA0001)
     'FTP-Patator':                  2,
     'SSH-Patator':                  2,
+    'FTP-BruteForce':               2,
+    'SSH-Bruteforce':               2,
     'Web Attack \x96 Brute Force':  2,  # em-dash variant
     'Web Attack - Brute Force':     2,
-    'Web Attack \x96 XSS':         2,
-    'Web Attack - XSS':            2,
+    'Brute Force -Web':             2,
+    'Brute Force -XSS':             2,
+    'Web Attack \x96 XSS':          2,
+    'Web Attack - XSS':             2,
     'Web Attack \x96 Sql Injection': 2,
     'Web Attack - Sql Injection':   2,
+    'SQL Injection':                2,
     'Heartbleed':                   2,
 
     # Lateral Movement (MITRE TA0008)
     'Infiltration':                 3,
+    'Infilteration':                3, # 2018 spelling error in original dataset
 
     # Command and Control / Impact (MITRE TA0011 / TA0040)
     'Bot':                          4,
     'DDoS':                         4,
+    'DDOS attack-LOIC-UDP':         4,
+    'DDOS attack-HOIC':             4,
+    'DDoS attacks-LOIC-HTTP':       4,
     'DoS slowloris':                4,
+    'DoS attacks-Slowloris':        4,
     'DoS Slowhttptest':             4,
+    'DoS attacks-SlowHTTPTest':     4,
     'DoS Hulk':                     4,
+    'DoS attacks-Hulk':             4,
     'DoS GoldenEye':                4,
+    'DoS attacks-GoldenEye':        4,
 }
 
 CTU13_BOTNET_IPS = {
