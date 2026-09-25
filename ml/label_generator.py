@@ -118,7 +118,7 @@ def label_cic_ids_2017(sequences_csv, labeled_csv_dir, output_path, window_secon
 
         for col in label_df.columns:
             col_lower = col.lower()
-            if 'source ip' in col_lower or col_lower == 'src_ip':
+            if 'source ip' in col_lower or col_lower == 'src_ip' or 'src ip' in col_lower:
                 src_col = col
             elif 'timestamp' in col_lower:
                 ts_col = col
@@ -126,6 +126,7 @@ def label_cic_ids_2017(sequences_csv, labeled_csv_dir, output_path, window_secon
                 label_col = col
 
         if not all([src_col, ts_col, label_col]):
+            print(f"    Skipping (missing columns). Found: src={src_col}, ts={ts_col}, label={label_col}")
             continue
 
         label_df[ts_col] = pd.to_datetime(label_df[ts_col], errors='coerce', dayfirst=True)
