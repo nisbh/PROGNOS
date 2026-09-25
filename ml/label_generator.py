@@ -145,6 +145,7 @@ def label_cic_ids_2017(sequences_csv, labeled_csv_dir, output_path, window_secon
         
     master_attack_db = pd.concat(all_malicious_windows, ignore_index=True)
     master_attack_db = master_attack_db.groupby('src_ip')['mitre_stage'].max().reset_index()
+    master_attack_db['src_ip'] = master_attack_db['src_ip'].astype(str).str.strip()
     print(f"Built Attack Database: {len(master_attack_db)} unique attacker IPs found.")
 
     print(f"\nStreaming massive sequences file: {sequences_csv}")
@@ -165,6 +166,8 @@ def label_cic_ids_2017(sequences_csv, labeled_csv_dir, output_path, window_secon
         chunk['infiltration_prob'] = 0.0
         
         if 'id.orig_h' in chunk.columns:
+            
+            chunk['id.orig_h'] = chunk['id.orig_h'].astype(str).str.strip()
             
             merged = chunk.merge(
                 master_attack_db,
