@@ -175,10 +175,13 @@ def label_cic_ids_2017(sequences_csv, labeled_csv_dir, output_path, window_secon
                 how='left'
             )
             
-            mask = merged['mitre_stage'].notna()
-            chunk.loc[mask, 'mitre_label'] = merged.loc[mask, 'mitre_stage'].astype(int)
+            # Use .values to ignore index misalignment between chunk and merged
+            chunk['mitre_stage_tmp'] = merged['mitre_stage'].values
+            mask = chunk['mitre_stage_tmp'].notna()
+            
+            chunk.loc[mask, 'mitre_label'] = chunk.loc[mask, 'mitre_stage_tmp'].astype(int)
             chunk.loc[mask, 'infiltration_prob'] = 1.0
-            chunk.drop(columns=['window_ts'], inplace=True, errors='ignore')
+            chunk.drop(columns=['window_ts', 'mitre_stage_tmp'], inplace=True, errors='ignore')
 
         # Track distributions
         counts = chunk['mitre_label'].value_counts()
