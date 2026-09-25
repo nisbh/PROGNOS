@@ -19,13 +19,9 @@ def parse_zeek_log(log_path):
 
 def create_time_series_sequences(df, window_seconds=10):
     """Chunks network connections into sequential time-windows."""
-    # Convert timestamp to datetime (Zeek logs epoch seconds)
     df['ts'] = pd.to_datetime(df['ts'], unit='s')
-    
-    # Sort chronologically
     df = df.sort_values('ts')
     
-    # Identify numeric columns for aggregation
     numeric_cols = [
         'duration', 'orig_bytes', 'resp_bytes', 'orig_pkts', 'resp_pkts',
         'min_ttl_orig', 'max_ttl_orig', 'min_ttl_resp', 'max_ttl_resp',
@@ -36,33 +32,25 @@ def create_time_series_sequences(df, window_seconds=10):
         'iat_mean', 'iat_max', 'iat_var'
     ]
     
-    # Handle Zeek's '-' null values and coerce to floats
     for col in numeric_cols:
         if col in df.columns:
-            # Replace '-' with NaN, then convert to numeric
             df[col] = pd.to_numeric(df[col].replace('-', np.nan), errors='coerce').fillna(0)
             
-    # Define aggregation rules: mean of features across the 10s window
     agg_dict = {col: 'mean' for col in numeric_cols if col in df.columns}
     
-    # Count the number of unique connections/flows in this window
     if 'uid' in df.columns:
         agg_dict['uid'] = 'count'
         
-    # Extract port scan signatures (unique destination ports in the 10s window)
     if 'id.resp_p' in df.columns:
         agg_dict['id.resp_p'] = 'nunique'
     
-    # Group by Source IP to track per-machine trajectories!
     if 'id.orig_h' in df.columns:
         resampled = df.groupby('id.orig_h').resample(f'{window_seconds}s', on='ts').agg(agg_dict).fillna(0)
         resampled = resampled.reset_index()
     else:
-        # Fallback for old logs
         resampled = df.resample(f'{window_seconds}s', on='ts').agg(agg_dict).fillna(0)
         resampled = resampled.reset_index()
     
-    # Rename columns to something more descriptive
     rename_dict = {}
     if 'uid' in resampled.columns:
         rename_dict['uid'] = 'flow_count'
@@ -71,7 +59,6 @@ def create_time_series_sequences(df, window_seconds=10):
         
     resampled.rename(columns=rename_dict, inplace=True)
     
-    # Calculate bidirectional flow ratio
     if 'orig_bytes' in resampled.columns and 'resp_bytes' in resampled.columns:
         resampled['bidirectional_flow_ratio'] = resampled['orig_bytes'] / (resampled['resp_bytes'] + 1e-9)
         
@@ -79,21 +66,43 @@ def create_time_series_sequences(df, window_seconds=10):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Chunk Zeek logs into sequential time-series windows.")
-    parser.add_argument('--input', type=str, required=True, help="Path to prognos_features.log")
+    parser.add_argument('--input', type=str, required=True, help="Path to prognos_features.log OR directory containing logs")
     parser.add_argument('--output', type=str, required=True, help="Path to save output CSV (e.g., sequences.csv)")
     parser.add_argument('--window', type=int, default=10, help="Window size in seconds (default 10)")
     
     args = parser.parse_args()
     
-    print(f"Parsing Zeek log: {args.input}")
-    try:
-        df = parse_zeek_log(args.input)
-    except Exception as e:
-        print(f"Error parsing log file: {e}")
+    input_path = Path(args.input)
+    if input_path.is_dir():
+        log_files = list(input_path.glob("*.log"))
+        print(f"Found {len(log_files)} logs in directory.")
+    else:
+        log_files = [input_path]
+
+    all_sequences = []
+    
+    for f in log_files:
+        try:
+            if f.stat().st_size < 100:
+                continue
+                
+            df = parse_zeek_log(f)
+            
+            if len(df) == 0:
+                continue
+                
+            seq_df = create_time_series_sequences(df, window_seconds=args.window)
+            all_sequences.append(seq_df)
+            print(f"Processed {f.name} -> {len(seq_df)} windows")
+        except Exception as e:
+            print(f"Skipping corrupted log {f.name}: {e}")
+            
+    if not all_sequences:
+        print("Error: No valid sequences could be generated from the inputs.")
         exit(1)
         
-    print(f"Chunking into {args.window}-second windows...")
-    sequence_df = create_time_series_sequences(df, window_seconds=args.window)
+    print(f"Concatenating all {len(all_sequences)} chunks...")
+    final_df = pd.concat(all_sequences, ignore_index=True)
     
-    sequence_df.to_csv(args.output)
-    print(f"Saved {len(sequence_df)} sequence windows to {args.output}")
+    final_df.to_csv(args.output, index=False)
+    print(f"Saved massive dataset of {len(final_df)} sequence windows to {args.output}")
