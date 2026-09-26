@@ -9,7 +9,9 @@ def evaluate_model(weights_path, dataset_path, batch_size=32, device="cuda" if t
     print(f"\n--- Loading PyTorch World Model on {device} ---")
     
     # 1. Load Data (We use the entire dataset provided as the test set)
-    test_loader, _ = get_dataloader(dataset_path, batch_size=batch_size, sequence_length=6, is_train=False)
+    # We pass is_train=True here simply so the dataset initializes a new RobustScaler, 
+    # since we didn't pickle the scaler during the training phase.
+    test_loader, _ = get_dataloader(dataset_path, batch_size=batch_size, sequence_length=6, is_train=True)
     print(f"Loaded {len(test_loader.dataset)} unseen temporal sequences for testing.")
     
     # 2. Initialize Model and Load Weights
