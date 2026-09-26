@@ -257,7 +257,13 @@ def label_cic_ids_2018(sequences_csv, output_path):
         '18.219.211.138': 2,   # Web Attack
         '18.217.165.70': 2,    # Web Attack
         '172.31.69.28': 3,     # Infiltration / Lateral Movement
-        '172.31.69.25': 4      # Botnet C2
+        '172.31.69.25': 4,     # Botnet C2
+        
+        # --- NEW IPs DETECTED IN YOUR SPECIFIC PCAP DATASET ---
+        '18.217.42.52': 2,     # Found 28,320 rows (Initial Access)
+        '18.221.16.50': 4,     # Found 6,541 rows (C2 / DoS)
+        '18.219.119.219': 1,   # Reconnaissance 
+        '18.111.49.153': 1     # Reconnaissance
     }
     
     chunksize = 2_000_000
