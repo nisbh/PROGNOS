@@ -1,6 +1,9 @@
 import pandas as pd
+# pyrefly: ignore [missing-import]
 import numpy as np
+# pyrefly: ignore [missing-import]
 import torch
+# pyrefly: ignore [missing-import]
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import RobustScaler
 
@@ -37,7 +40,7 @@ class PrognosTrafficDataset(Dataset):
         df.fillna(0, inplace=True)
         
         # Scaling
-        if self.is_train:
+        if self.is_train or scaler is None:
             self.scaler = RobustScaler()
             df[self.feature_cols] = self.scaler.fit_transform(df[self.feature_cols])
         else:
