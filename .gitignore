@@ -48,3 +48,8 @@ PROGNOS_CONTEXT.md
 *.zip
 *.md5
 master_dataset_labeled.csv
+
+# Logs and IDE
+*.log
+.vscode/
+data/logs_2018/
