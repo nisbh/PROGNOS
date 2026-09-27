@@ -11,7 +11,27 @@ import os
 from dataset import get_dataloader
 from world_model import PrognosWorldModel
 import argparse
-from torch.utils.data import random_split, DataLoader
+from torch.utils.data import random_split, DataLoader, Subset
+import torch.nn.functional as F
+
+class FocalLoss(nn.Module):
+    def __init__(self, weight=None, gamma=2.0, reduction='mean'):
+        super(FocalLoss, self).__init__()
+        self.weight = weight
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, inputs, targets):
+        ce_loss = F.cross_entropy(inputs, targets, weight=self.weight, reduction='none')
+        pt = torch.exp(-ce_loss)
+        focal_loss = ((1 - pt) ** self.gamma) * ce_loss
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        else:
+            return focal_loss
+
 
 
 def train_baseline_logistic_regression(train_loader):
@@ -82,7 +102,7 @@ def evaluate_pytorch_model(model, test_loader, device):
 
 
 def train_world_model(
-    csv_path="data/train_ready_2018.csv",
+    csv_path="data/balanced_sequences.pkl",
     epochs=10,
     batch_size=32,
     device="cuda" if torch.cuda.is_available() else "cpu"
@@ -92,22 +112,20 @@ def train_world_model(
     # -----------------------------------------------------------------------
     # 1. Load Data + persist the RobustScaler for use at inference/eval time
     # -----------------------------------------------------------------------
-    full_loader, scaler = get_dataloader(
-        csv_path, batch_size=batch_size, sequence_length=6, is_train=True
+    full_loader, _ = get_dataloader(
+        csv_path, batch_size=batch_size, is_train=True
     )
     full_dataset = full_loader.dataset
 
-    # Pickle the scaler so evaluate_world_model.py can use the SAME scaler
-    scaler_path = "ml_scaler.pkl"
-    with open(scaler_path, "wb") as f:
-        pickle.dump(scaler, f)
-    print(f"Scaler saved to {scaler_path}")
+    print(f"Dataset loaded from {csv_path}")
 
     # -----------------------------------------------------------------------
     # 2. 80/20 Train-Test Split
     # -----------------------------------------------------------------------
     train_size = int(0.8 * len(full_dataset))
     test_size  = len(full_dataset) - train_size
+    
+    # Now that sequences are non-overlapping, we can safely use random_split!
     train_dataset, test_dataset = random_split(full_dataset, [train_size, test_size])
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,  drop_last=True)
@@ -145,8 +163,8 @@ def train_world_model(
     # -----------------------------------------------------------------------
     model = PrognosWorldModel(input_features=30, num_classes=5).to(device)
 
-    # Weighted cross-entropy so rare attack classes (Recon, Lateral) are penalised heavily
-    criterion_mitre = nn.CrossEntropyLoss(weight=class_weights_tensor)
+    # Simple CrossEntropyLoss without extreme class weights
+    criterion_mitre = nn.CrossEntropyLoss()
     criterion_prob  = nn.BCELoss()
 
     optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
@@ -158,8 +176,10 @@ def train_world_model(
     # 6. Training Loop
     # -----------------------------------------------------------------------
     print(f"\n--- Starting Training ({epochs} epochs) ---")
-    model.train()
+    best_f1 = 0.0
+    
     for epoch in range(epochs):
+        model.train()
         epoch_loss_mitre = 0.0
         epoch_loss_prob  = 0.0
         start_time = time.time()
@@ -175,10 +195,12 @@ def train_world_model(
 
             loss_mitre = criterion_mitre(mitre_logits, y_mitre)
             loss_prob  = criterion_prob(prob_preds, y_prob)
-            loss       = loss_mitre + 0.5 * loss_prob   # de-weight BCE to avoid it drowning MITRE
+            
+            # The model should just focus on predicting the correct attack
+            loss       = loss_mitre
 
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # stability
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)  # loosened stability for Focal Loss
             optimizer.step()
 
             epoch_loss_mitre += loss_mitre.item()
@@ -194,22 +216,25 @@ def train_world_model(
             f"LR: {scheduler.get_last_lr()[0]:.5f} | "
             f"Time: {elapsed:.1f}s"
         )
-
+        
+        # Validation and Best Checkpointing
+        val_f1 = evaluate_pytorch_model(model, test_loader, device)
+        if val_f1 > best_f1:
+            best_f1 = val_f1
+            torch.save(model.state_dict(), "world_model_weights_best.pt")
+            print(f"*** New BEST model saved with F1: {best_f1:.4f} ***")
+            
     # -----------------------------------------------------------------------
-    # 7. Save Weights
+    # 7. Final Evaluation on Held-Out Test Set (Using Best Weights)
     # -----------------------------------------------------------------------
-    torch.save(model.state_dict(), "world_model_weights.pt")
-    print("\nSaved trained World Model weights to world_model_weights.pt")
-
-    # -----------------------------------------------------------------------
-    # 8. Final Evaluation on Held-Out Test Set
-    # -----------------------------------------------------------------------
+    print("\nLoading best weights for final evaluation...")
+    model.load_state_dict(torch.load("world_model_weights_best.pt"))
     evaluate_pytorch_model(model, test_loader, device)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train PyTorch CNN-LSTM World Model")
-    parser.add_argument('--dataset', type=str, default="data/train_ready_2018.csv",
+    parser.add_argument('--dataset', type=str, default="data/balanced_sequences.pkl",
                         help="Path to balanced training dataset")
     parser.add_argument('--epochs', type=int, default=10,
                         help="Number of training epochs (default: 10)")
